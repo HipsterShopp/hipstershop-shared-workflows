@@ -403,6 +403,8 @@ jobs:
       always() &&
       needs.trivy.result == 'success' &&
       needs.build-image.result == 'success'
+    outputs:
+      tag: ${{ needs.generate-tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -548,7 +550,7 @@ jobs:
 
           echo "Updating image tag in $FILE"
 
-          sed -i "s|tag:.*|tag: ${{ needs.generate-tag.outputs.tag }}|" $FILE
+          sed -i "s|tag:.*|tag: ${{ needs.push.outputs.tag }}|" $FILE
 
           echo "Updated file:"
           cat $FILE
@@ -559,7 +561,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add helm/values.yaml
-          git commit -m "chore: update image tag to ${{ needs.generate-tag.outputs.tag }}" || echo "No changes"
+          git commit -m "chore: update image tag to ${{ needs.push.outputs.tag }}" || echo "No changes"
 
       - name: Push changes
         run: |
