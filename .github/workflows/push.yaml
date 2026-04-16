@@ -22,6 +22,9 @@ on:
       push_result:
         description: "push job result"
         value: ${{ jobs.push.outputs.result }}
+      tag:
+        description: "The image tag that was pushed"
+        value: ${{ jobs.push.outputs.tag }}
 
 
 jobs:
@@ -30,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       result: ${{ job.status }}
+      tag:    ${{ inputs.git_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
