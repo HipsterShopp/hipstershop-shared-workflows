@@ -523,46 +523,46 @@ jobs:
             [View Full Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
 
-  update-helm-values:
-    name: update helm values
-    runs-on: ubuntu-latest
-    needs: [push]
-    if: |
-      always() && 
-      needs.push.result == 'success' &&
-      github.ref_name == 'main'
+  # update-helm-values:
+  #   name: update helm values
+  #   runs-on: ubuntu-latest
+  #   needs: [push]
+  #   if: |
+  #     always() && 
+  #     needs.push.result == 'success' &&
+  #     github.ref_name == 'main'
       
       
-  # github.actor != 'github-actions[bot]'
+  # # github.actor != 'github-actions[bot]'
 
-    permissions:
-      contents: write  
+  #   permissions:
+  #     contents: write  
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ github.token }}
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ github.token }}
 
-      - name: Update image tag in values.yaml
-        run: |
-          FILE="helm/values.yaml"
+  #     - name: Update image tag in values.yaml
+  #       run: |
+  #         FILE="helm/values.yaml"
 
-          echo "Updating image tag in $FILE"
+  #         echo "Updating image tag in $FILE"
 
-          sed -i "s|tag:.*|tag: ${{ needs.push.outputs.tag }}|" $FILE
+  #         sed -i "s|tag:.*|tag: ${{ needs.push.outputs.tag }}|" $FILE
 
-          echo "Updated file:"
-          cat $FILE
+  #         echo "Updated file:"
+  #         cat $FILE
 
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  #     - name: Commit changes
+  #       run: |
+  #         git config user.name "github-actions"
+  #         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add helm/values.yaml
-          git commit -m "chore: update image tag to ${{ needs.push.outputs.tag }}" || echo "No changes"
+  #         git add helm/values.yaml
+  #         git commit -m "chore: update image tag to ${{ needs.push.outputs.tag }}" || echo "No changes"
 
-      - name: Push changes
-        run: |
-          git push origin HEAD:main
+  #     - name: Push changes
+  #       run: |
+  #         git push origin HEAD:main
