@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       service_name:
-        description: "Name of the microservice (e.g. adservice)"
+        description: "Name of the microservice"
         required: true
         type: string
       image_tag:
@@ -15,7 +15,6 @@ on:
         description: "Path to values.yaml inside hipstershop-helm-charts repo"
         required: true
         type: string
-        # example: hipstershop-micro-apps/adservice/values.yaml
     secrets:
       HELM_CHARTS_TOKEN:
         description: "PAT with contents:write on hipstershop-helm-charts repo"
@@ -29,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    
       - name: Checkout hipstershop-helm-charts
         uses: actions/checkout@v4
         with:
