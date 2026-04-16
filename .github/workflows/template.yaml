@@ -1,5 +1,5 @@
 name: template
-# if: github.actor != 'github-actions[bot]'
+
 run-name: "${{ inputs.service_name }} triggered by commit — ${{ github.event.head_commit.message }} (${{ github.sha }})"
 
 on:
