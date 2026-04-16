@@ -1,0 +1,119 @@
+name: notify
+# if: github.actor != 'github-actions[bot]'
+run-name: "${{ inputs.service_name }} notify triggered by commit — ${{ github.event.head_commit.message }} (${{ github.sha }})"
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      service_path:
+        required: true
+        type: string
+      runtime:
+        required: true
+        type: string
+      github_event_name:
+        required: true
+        type: string
+      sonarqube_result:
+        type: string
+        default: "success"
+      snyk_result:
+        type: string
+        default: "success"
+      generate_tag_result:
+        type: string
+        default: "success"
+      build_image_result:
+        type: string
+        default: "success"
+      trivy_result:
+        type: string
+        default: "success"
+      push_result:
+        type: string
+        default: "success"
+      tag:
+        type: string
+
+    secrets:
+      SENDGRID_API_KEY:
+
+jobs:
+  notify:
+    name: notify
+    runs-on: ubuntu-latest
+    if: |
+      always() && (
+        inputs.snyk_result          == 'failure' ||
+        inputs.sonarqube_result     == 'failure' ||
+        inputs.generate_tag_result  == 'failure' ||
+        inputs.build_image_result   == 'failure' ||
+        inputs.trivy_result         == 'failure' ||
+        inputs.push_result          == 'failure'
+      )
+    steps:
+      - name: failure summary
+        id: summary
+        run: |
+          FAILED_JOBS=""
+
+          if [ "${{ inputs.sonarqube_result }}"    == "failure" ]; then
+            FAILED_JOBS="${FAILED_JOBS}| sonarqube | FAILED |\n"
+          fi
+          if [ "${{ inputs.snyk_result }}"         == "failure" ]; then
+            FAILED_JOBS="${FAILED_JOBS}| snyk | FAILED |\n"
+          fi
+          if [ "${{ inputs.generate_tag_result }}" == "failure" ]; then
+            FAILED_JOBS="${FAILED_JOBS}| generate-tag | FAILED |\n"
+          fi
+          if [ "${{ inputs.build_image_result }}"  == "failure" ]; then
+            FAILED_JOBS="${FAILED_JOBS}| build image | FAILED |\n"
+          fi
+          if [ "${{ inputs.trivy_result }}"        == "failure" ]; then
+            FAILED_JOBS="${FAILED_JOBS}| trivy | FAILED — CRITICAL CVEs detected, push blocked |\n"
+          fi
+          if [ "${{ inputs.push_result }}"         == "failure" ]; then
+            FAILED_JOBS="${FAILED_JOBS}| push | FAILED |\n"
+          fi
+
+          echo "failed_jobs<<EOF" >> $GITHUB_OUTPUT
+          printf "$FAILED_JOBS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send failure notification
+        uses: licenseware/send-email-notification@v1
+        with:
+          api-key: ${{ secrets.SENDGRID_API_KEY }}
+          subject: "CI FAILED — ${{ inputs.service_name }} (${{ github.sha }})"
+          from-email: chrissattasseril16@gmail.com
+          to-email: chrissattasseril16@gmail.com
+          markdown-body: |
+            ## CI Pipeline Failed — ${{ inputs.service_name }}
+
+            | Detail | Value |
+            |--------|-------|
+            | **Service** | `${{ inputs.service_name }}` |
+            | **Branch** | `${{ github.ref_name }}` |
+            | **Tag** | `${{ inputs.tag }}` |
+            | **Actor** | ${{ github.actor }} |
+            | **Commit** | ${{ github.event.head_commit.message }} |
+            | **SHA** | `${{ github.sha }}` |
+
+            ## Failed Jobs
+            ${{ steps.summary.outputs.failed_jobs }}
+
+            ## All Job Results
+
+            | Job | Result |
+            |-----|--------|
+            | snyk | **${{ inputs.snyk_result }}** |
+            | sonarqube | **${{ inputs.sonarqube_result }}** |
+            | generate-tag | **${{ inputs.generate_tag_result }}** |
+            | build image | **${{ inputs.build_image_result }}** |
+            | trivy | **${{ inputs.trivy_result }}** |
+            | push | **${{ inputs.push_result }}** |
+
+            [View Full Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
