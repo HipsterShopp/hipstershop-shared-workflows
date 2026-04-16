@@ -1,5 +1,5 @@
 name: template
-if: github.actor != 'github-actions[bot]'
+# if: github.actor != 'github-actions[bot]'
 run-name: "${{ inputs.service_name }} triggered by commit — ${{ github.event.head_commit.message }} (${{ github.sha }})"
 
 on:
@@ -527,7 +527,8 @@ jobs:
     needs: [push, generate-tag]
     if: |
       needs.push.result == 'success' &&
-      github.ref_name == 'main'
+      github.ref_name == 'main' &&
+      github.actor != 'github-actions[bot]'
 
     permissions:
       contents: write  
