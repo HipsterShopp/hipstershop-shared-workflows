@@ -9,6 +9,10 @@ on:
       service_path:
         required: true
         type: string
+      run_trivy:
+        description: "Run Trivy image scan (set false on push/merge since it ran in the PR)"
+        type: boolean
+        default: true
     secrets:
       DOCKERHUB_USERNAME:
       DOCKERHUB_TOKEN:
@@ -158,6 +162,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       always() &&
+      inputs.run_trivy == true &&
       needs.build-image.result == 'success'
     needs: [generate-tag, build-image]
     outputs:
