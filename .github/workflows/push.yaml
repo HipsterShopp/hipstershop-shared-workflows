@@ -6,12 +6,6 @@ on:
       service_name:
         required: true
         type: string
-      image_tag:
-        required: true
-        type: string
-      image_latest:
-        required: true
-        type: string
       git_tag:
         required: true
         type: string
@@ -55,14 +49,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push versioned image tag
-        run: docker push ${{ inputs.image_tag }}
+      - name: Tag and push versioned image
+        run: |
+          IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ inputs.git_tag }}"
+          LOADED_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | head -n1)
+          docker tag "$LOADED_IMAGE" "$IMAGE_TAG"
+          docker push "$IMAGE_TAG"
 
       - name: Tag and push latest (main only)
         if: github.ref_name == 'main'
         run: |
-          docker tag ${{ inputs.image_tag }} ${{ inputs.image_latest }}
-          docker push ${{ inputs.image_latest }}
+          IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ inputs.git_tag }}"
+          IMAGE_LATEST="${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:latest"
+          docker tag $IMAGE_TAG $IMAGE_LATEST
+          docker push $IMAGE_LATEST
 
       - name: Create and push git tag (main only, if not exists)
         if: github.ref_name == 'main' && inputs.tag_exists != 'true'
