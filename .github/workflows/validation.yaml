@@ -43,6 +43,12 @@ on:
         required: true
       SONAR_HOST_URL:
 
+    outputs:
+      sonarqube_result:
+        value: ${{ jobs.sonarqube.outputs.result }}
+      snyk_result:
+        value: ${{ jobs.snyk.outputs.result }}
+
 jobs:
   sonarqube:
     name: sonarqube

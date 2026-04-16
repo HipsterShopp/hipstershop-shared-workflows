@@ -28,6 +28,18 @@ on:
       DOCKERHUB_USERNAME:
       DOCKERHUB_TOKEN:
 
+    outputs:
+      tag:
+        value: ${{ jobs.generate-tag.outputs.tag }}
+      generate_tag_result:
+        value: ${{ jobs.generate-tag.result }}
+      build_image_result:
+        value: ${{ jobs.build-image.result }}
+      trivy_result:
+        value: ${{ jobs.trivy.result }}
+      push_result:
+        value: ${{ jobs.push.result }}
+
 jobs:
   generate-tag:
     name: generate tag
