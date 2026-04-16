@@ -1,5 +1,5 @@
 name: template
-
+if: github.actor != 'github-actions[bot]'
 run-name: "${{ inputs.service_name }} triggered by commit — ${{ github.event.head_commit.message }} (${{ github.sha }})"
 
 on:
@@ -521,3 +521,42 @@ jobs:
             [View Full Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
 
+    update-helm-values:
+    name: update helm values
+    runs-on: ubuntu-latest
+    needs: [push, generate-tag]
+    if: |
+      needs.push.result == 'success' &&
+      github.ref_name == 'main'
+
+    permissions:
+      contents: write  
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ github.token }}
+
+      - name: Update image tag in values.yaml
+        run: |
+          FILE="helm/values.yaml"
+
+          echo "Updating image tag in $FILE"
+
+          sed -i "s|tag:.*|tag: ${{ needs.generate-tag.outputs.tag }}|" $FILE
+
+          echo "Updated file:"
+          cat $FILE
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add helm/values.yaml
+          git commit -m "chore: update image tag to ${{ needs.generate-tag.outputs.tag }}" || echo "No changes"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
