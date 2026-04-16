@@ -1,0 +1,44 @@
+name: sonar-qube
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      service_dir:
+        required: true
+        type: string
+    secrets:
+      SONAR_HOST:
+        required: true
+      SONAR_TOKEN:
+        required: true
+
+jobs:
+  sonar-qube:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: sonar-scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        with:
+          project_dir: ${{inputs.service_dir}}
+          args: >
+            -Dsonar.projectName: ${{inputs.service_name}}
+            -Dsonar.projectKey: ${{inputs.service_name}}
+        env:
+          SONAR_TOKEN: ${{inputs.SONAR_TOKEN}}
+          SONAR_HOST_URL: ${{inputs.SONAR_HOST_URL}}
+
+      - name: sonar-quality-gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        with:
+          - scanMetadataReportFile: ${{inputs.service_dir}}/.scannerwork/report-task.txt
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{inputs.SONAR_TOKEN}}
