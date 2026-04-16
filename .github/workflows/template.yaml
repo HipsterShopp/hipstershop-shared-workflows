@@ -524,8 +524,9 @@ jobs:
   update-helm-values:
     name: update helm values
     runs-on: ubuntu-latest
-    needs: [push, generate-tag]
+    needs: [push]
     if: |
+      always() && 
       needs.push.result == 'success' &&
       github.ref_name == 'main'
       
