@@ -1,0 +1,129 @@
+name: tag_generation
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      service_path:
+        required: true
+        type: string
+      runtime:
+        required: true
+        type: string
+      github_event_name:
+        required: true
+        type: string
+      node-version:
+        type: string
+        default: "20"
+      python-version:
+        type: string
+        default: "3.11"
+      go-version:
+        type: string
+        default: "1.22"
+      java-version:
+        type: string
+        default: "21"
+      dotnet-version:
+        type: string
+        default: "8.0"
+      java-build-tool:
+        type: string
+        default: "maven"
+
+    secrets:
+      SNYK_TOKEN:
+        required: true
+      SONAR_TOKEN:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+
+generate-tag:
+    name: generate tag
+    runs-on: ubuntu-latest
+    # # if: inputs.github_event_name == 'push'
+    # if: |
+    #   (inputs.github_event_name == 'pull_request' || inputs.github_event_name == 'merge')
+    outputs:
+      tag:          ${{ steps.tag.outputs.tag }}
+      tag_exists:   ${{ steps.tag_check.outputs.exists }}
+      image_exists: ${{ steps.image_check.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate semantic version (main only)
+        id: semver
+        if: github.ref_name == 'main'
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ github.token }}
+          tag_prefix: "${{ inputs.service_name }}-v"
+          dry_run: true
+          default_bump: patch
+
+      - name: Generate tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            COMPUTED_TAG="${{ steps.semver.outputs.new_tag }}"
+            echo "Branch: main  |  semver new_tag: $COMPUTED_TAG"
+            echo "tag=$COMPUTED_TAG" >> $GITHUB_OUTPUT
+          else
+            BRANCH_SLUG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+            COMPUTED_TAG="${BRANCH_SLUG}-${SHORT_SHA}"
+            echo "Branch: ${{ github.ref_name }}  |  tag: $COMPUTED_TAG"
+            echo "tag=$COMPUTED_TAG" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate existing git tag
+        id: tag_check
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          git fetch --tags origin || true
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            TAG_COMMIT=$(git rev-list -n 1 "$TAG")
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+
+            if [ "$TAG_COMMIT" != "$CURRENT_COMMIT" ]; then
+              echo "Tag $TAG already exists but points to a different commit — aborting."
+              exit 1
+            fi
+
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if Docker image already exists
+        id: image_check
+        run: |
+          echo " Tag generated: ${{ steps.tag.outputs.tag }}"
+
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ steps.tag.outputs.tag }}"
+            echo "Checking image: $IMAGE"
+
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+            if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+              echo "Image EXISTS in Docker Hub — skipping build"
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "Image NOT found in Docker Hub — will build and push"
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+
+            docker logout
+          else
+            echo "No Docker Hub credentials found — skipping image check"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi

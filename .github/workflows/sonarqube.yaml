@@ -9,6 +9,7 @@ on:
       service_dir:
         required: true
         type: string
+        
     secrets:
       SONAR_HOST:
         required: true
@@ -16,8 +17,10 @@ on:
         required: true
 
 jobs:
-  sonar-qube:
+  sonar_scan:
     runs-on: ubuntu-latest
+    outputs:
+      result: ${{ job.status }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -29,8 +32,8 @@ jobs:
         with:
           project_dir: ${{inputs.service_dir}}
           args: >
-            -Dsonar.projectName: ${{inputs.service_name}}
-            -Dsonar.projectKey: ${{inputs.service_name}}
+            -Dsonar.projectName=${{inputs.service_name}}
+            -Dsonar.projectKey=${{inputs.service_name}}
         env:
           SONAR_TOKEN: ${{inputs.SONAR_TOKEN}}
           SONAR_HOST_URL: ${{inputs.SONAR_HOST_URL}}
@@ -38,7 +41,7 @@ jobs:
       - name: sonar-quality-gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         with:
-          - scanMetadataReportFile: ${{inputs.service_dir}}/.scannerwork/report-task.txt
+          scanMetadataReportFile: ${{inputs.service_dir}}/.scannerwork/report-task.txt
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{inputs.SONAR_TOKEN}}

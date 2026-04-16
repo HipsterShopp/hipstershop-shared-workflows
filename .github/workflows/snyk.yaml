@@ -1,0 +1,176 @@
+name: snyk
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      service_path:
+        required: true
+        type: string
+      runtime:
+        required: true
+        type: string
+      github_event:
+        required: true
+        type: string
+      node-version:
+        type: string
+        default: "20"
+      python-version:
+        type: string
+        default: "3.11"
+      go-version:
+        type: string
+        default: "1.22"
+      java-version:
+        type: string
+        default: "21"
+      dotnet-version:
+        type: string
+        default: "8.0"
+      java-build-tool:
+        type: string
+        default: "maven"
+
+    secrets:
+      SNYK_TOKEN:
+        required: true
+
+jobs:
+  snyk_scan:
+    runs_on: ubuntu-latest
+    if: inputs.github_event == 'pull_request'
+    outputs:
+      result: ${{ job.status }}
+    steps:
+      - name: checkout 
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fix file permissions (Gradle)
+        if: inputs.runtime == 'java' && inputs.java-build-tool == 'gradle'
+        run: chmod +x gradle/wrapper/gradle-wrapper.jar gradlew
+
+      - name: Setup Node.js
+        if: inputs.runtime == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: "${{ inputs.service_path }}/package.json"
+
+      - name: Setup Python
+        if: inputs.runtime == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: "pip"
+
+      - name: Setup Go
+        if: inputs.runtime == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Setup Java
+        if: inputs.runtime == 'java'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.java-build-tool }}
+
+      - name: Setup .NET
+        if: inputs.runtime == 'dotnet'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Install Node dependencies
+        if: inputs.runtime == 'node'
+        run: npm install
+
+      - name: Install Python dependencies
+        if: inputs.runtime == 'python'
+        run: pip install -r requirements.txt
+
+      - name: Download Go modules
+        if: inputs.runtime == 'go'
+        run: go mod download
+
+      - name: Restore .NET packages
+        if: inputs.runtime == 'dotnet'
+        run: dotnet restore
+
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Install snyk-to-html
+        run: npm install -g snyk-to-html
+
+      - name: Snyk scan (Node)
+        if: inputs.runtime == 'node'
+        run: snyk test --severity-threshold=high --json-file-output=snyk-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Convert Snyk report to HTML (Node)
+        if: inputs.runtime == 'node'
+        run: snyk-to-html -i snyk-report.json -o snyk-report.html
+
+      - name: Snyk scan (Python)
+        if: inputs.runtime == 'python'
+        run: snyk test --file=requirements.txt --package-manager=pip --severity-threshold=high --json-file-output=snyk-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Convert Snyk report to HTML (Python)
+        if: inputs.runtime == 'python'
+        run: snyk-to-html -i snyk-report.json -o snyk-report.html
+
+      - name: Snyk scan (Go)
+        if: inputs.runtime == 'go'
+        run: snyk test --file=go.mod --severity-threshold=high --json-file-output=snyk-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Convert Snyk report to HTML (Go)
+        if: inputs.runtime == 'go'
+        run: snyk-to-html -i snyk-report.json -o snyk-report.html
+
+      - name: Snyk scan (Java — Maven)
+        if: inputs.runtime == 'java' && inputs.java-build-tool == 'maven'
+        run: snyk test --file=pom.xml --severity-threshold=high --json-file-output=snyk-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk scan (Java — Gradle)
+        if: inputs.runtime == 'java' && inputs.java-build-tool == 'gradle'
+        run: snyk test --file=build.gradle --severity-threshold=high --json-file-output=snyk-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Convert Snyk report to HTML (Java)
+        if: inputs.runtime == 'java'
+        run: snyk-to-html -i snyk-report.json -o snyk-report.html
+
+      - name: Snyk scan (.NET)
+        if: inputs.runtime == 'dotnet'
+        run: snyk test --file=$(ls *.csproj | head -1) --severity-threshold=high --json-file-output=snyk-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Convert Snyk report to HTML (.NET)
+        if: inputs.runtime == 'dotnet'
+        run: snyk-to-html -i snyk-report.json -o snyk-report.html
+
+      - name: Upload Snyk HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-report-${{ inputs.service_name }}
+          path: ${{ inputs.service_path }}/snyk-report.html
+          retention-days: 14
+
