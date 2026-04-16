@@ -521,7 +521,7 @@ jobs:
             [View Full Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
 
-    update-helm-values:
+  update-helm-values:
     name: update helm values
     runs-on: ubuntu-latest
     needs: [push, generate-tag]
