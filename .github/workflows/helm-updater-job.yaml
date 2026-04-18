@@ -12,9 +12,14 @@ on:
         required: true
         type: string
       helm_values_path:
-        description: "Path to values.yaml inside hipstershop-helm-charts repo"
+        description: "Path to values file inside hipstershop-helm-charts repo"
         required: true
         type: string
+      target_branch:
+        description: "Branch to check out and push the values update to (main or develop)"
+        required: false
+        type: string
+        default: main
     secrets:
       HELM_CHARTS_TOKEN:
         description: "PAT with contents:write on hipstershop-helm-charts repo"
@@ -33,7 +38,7 @@ jobs:
         with:
           repository: HipsterShopp/hipstershop-helm-charts
           token: ${{ secrets.HELM_CHARTS_TOKEN }}
-          ref: main
+          ref: ${{ inputs.target_branch }}
 
       - name: Update image tag
         run: |
@@ -62,4 +67,4 @@ jobs:
           git diff --cached --quiet && echo "No changes — tag already up to date" && exit 0
 
           git commit -m "chore(${{ inputs.service_name }}): update image tag to ${{ inputs.image_tag }}"
-          git push origin main
+          git push origin ${{ inputs.target_branch }}
