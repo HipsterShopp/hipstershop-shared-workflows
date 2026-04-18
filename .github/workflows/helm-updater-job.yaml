@@ -4,32 +4,32 @@ on:
   workflow_call:
     inputs:
       service_name:
-        description: "Name of the microservice"
+        description: "Name of the microservice (e.g. adservice)"
         required: true
         type: string
       image_tag:
-        description: "New image tag to write into values.yaml"
+        description: "New image tag to write (e.g. develop-abc12345)"
         required: true
         type: string
       helm_values_path:
-        description: "Path to values file inside hipstershop-helm-charts repo"
+        description: "Relative path to the values file inside hipstershop-helm-charts (e.g. hipstershop-micro-apps/adservice/values.dev.yaml)"
         required: true
         type: string
       target_branch:
-        description: "Branch to check out and push the values update to (main or develop)"
+        description: "Branch of hipstershop-helm-charts to checkout and push to (e.g. develop or main)"
         required: false
         type: string
         default: main
     secrets:
       HELM_CHARTS_TOKEN:
-        description: "PAT with contents:write on hipstershop-helm-charts repo"
+        description: "PAT with contents:write on hipstershop-helm-charts"
         required: true
 
 
 jobs:
 
   update-helm-values:
-    name: update helm values
+    name: Update helm values
     runs-on: ubuntu-latest
 
     steps:
@@ -40,23 +40,26 @@ jobs:
           token: ${{ secrets.HELM_CHARTS_TOKEN }}
           ref: ${{ inputs.target_branch }}
 
-      - name: Update image tag
+      - name: Update image tag in values file
         run: |
           FILE="${{ inputs.helm_values_path }}"
 
           if [ ! -f "$FILE" ]; then
-            echo "ERROR: $FILE not found in hipstershop-helm-charts repo"
+            echo "ERROR: $FILE not found in hipstershop-helm-charts (${{ inputs.target_branch }} branch)"
             exit 1
           fi
 
           echo "Before:"
-          grep "tag:" "$FILE" || true
+          grep "hipstershop-${{ inputs.service_name }}" "$FILE" || true
 
-          # Target the specific indented `tag:` line under images.<service>
-          sed -i "s|^\(\s*tag:\s*\).*|\1${{ inputs.image_tag }}|" "$FILE"
+          # values.dev.yaml uses single-string image format:
+          #   servicename: "yampss/hipstershop-<service>:<old-tag>"
+          # The pattern [^\"]* matches everything up to (not including) the closing double-quote,
+          # so only the tag portion is replaced and the surrounding quotes are preserved.
+          sed -i "s|yampss/hipstershop-${{ inputs.service_name }}:[^\"]*|yampss/hipstershop-${{ inputs.service_name }}:${{ inputs.image_tag }}|g" "$FILE"
 
           echo "After:"
-          grep "tag:" "$FILE"
+          grep "hipstershop-${{ inputs.service_name }}" "$FILE"
 
       - name: Commit and push
         run: |
