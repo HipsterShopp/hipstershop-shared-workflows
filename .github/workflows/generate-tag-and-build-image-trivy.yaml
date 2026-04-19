@@ -13,9 +13,6 @@ on:
         description: "Run Trivy image scan (set false on push/merge since it ran in the PR)"
         type: boolean
         default: true
-    secrets:
-      DOCKERHUB_USERNAME:
-      DOCKERHUB_TOKEN:
 
     outputs:
       tag:
@@ -93,30 +90,30 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check if Docker image already exists
-        id: image_check
-        run: |
-          echo "Tag generated: ${{ steps.tag.outputs.tag }}"
+      # - name: Check if Docker image already exists
+      #   id: image_check
+      #   run: |
+      #     echo "Tag generated: ${{ steps.tag.outputs.tag }}"
 
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ steps.tag.outputs.tag }}"
-            echo "Checking image: $IMAGE"
+      #     if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+      #       IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ steps.tag.outputs.tag }}"
+      #       echo "Checking image: $IMAGE"
 
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      #       echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
-              echo "Image EXISTS in Docker Hub — skipping build"
-              echo "exists=true" >> $GITHUB_OUTPUT
-            else
-              echo "Image NOT found in Docker Hub — will build and push"
-              echo "exists=false" >> $GITHUB_OUTPUT
-            fi
+      #       if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+      #         echo "Image EXISTS in Docker Hub — skipping build"
+      #         echo "exists=true" >> $GITHUB_OUTPUT
+      #       else
+      #         echo "Image NOT found in Docker Hub — will build and push"
+      #         echo "exists=false" >> $GITHUB_OUTPUT
+      #       fi
 
-            docker logout
-          else
-            echo "No Docker Hub credentials found — skipping image check"
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+      #       docker logout
+      #     else
+      #       echo "No Docker Hub credentials found — skipping image check"
+      #       echo "exists=false" >> $GITHUB_OUTPUT
+      #     fi
 
 
   build-image:
@@ -135,17 +132,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract image tags
-        id: meta
-        run: |
-          echo "image_tag=${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ needs.generate-tag.outputs.tag }}" >> $GITHUB_OUTPUT
+      # - name: Extract image tags
+      #   id: meta
+      #   run: |
+      #     echo "image_tag=${{ secrets.DOCKERHUB_USERNAME }}/hipstershop-${{ inputs.service_name }}:${{ needs.generate-tag.outputs.tag }}" >> $GITHUB_OUTPUT
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ steps.meta.outputs.image_tag }} ${{ inputs.service_path }}
+          docker build -t local-image:${{ needs.generate-tag.outputs.tag }} ${{ inputs.service_path }}
 
       - name: Save Docker image to tar
-        run: docker save ${{ steps.meta.outputs.image_tag }} -o /tmp/image.tar
+        run: docker save local-image:${{ needs.generate-tag.outputs.tag }} -o /tmp/image.tar
+
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
