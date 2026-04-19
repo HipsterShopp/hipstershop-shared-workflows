@@ -53,13 +53,13 @@ jobs:
           fi
 
           echo "Before:"
-          grep "tag:" "$FILE" || true
+          grep -E "$SERVICE|tag:" "$FILE" || true
 
            # Replace full image string
            sed -i "s|^\(\s*$SERVICE:\s*\)\".*\"|\1\"$ECR_REPO:$TAG\"|" "$FILE"
 
           echo "After:"
-          grep "tag:" "$FILE"
+          grep -E "$SERVICE|tag:" "$FILE" || true
 
       - name: Commit and push
         run: |
