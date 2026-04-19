@@ -56,7 +56,7 @@ jobs:
           grep "tag:" "$FILE" || true
 
            # Replace full image string
-           sed -i "s|^\(\s*$SERVICE:\s*\).*|\1\"$ECR_REPO:$TAG\"|" "$FILE"
+           sed -i "s|^\(\s*$SERVICE:\s*\)\".*\"|\1\"$ECR_REPO:$TAG\"|" "$FILE"
 
           echo "After:"
           grep "tag:" "$FILE"
