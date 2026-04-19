@@ -61,7 +61,7 @@ jobs:
       - name: Tag and push versioned image
         run: |
           IMAGE_TAG="854929211842.dkr.ecr.us-east-1.amazonaws.com/hipstershop-${{ inputs.service_name }}:${{ inputs.git_tag }}"
-          LOADED_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | head -n1)
+          LOADED_IMAGE="local-image:${{ inputs.git_tag }}"
           docker tag "$LOADED_IMAGE" "$IMAGE_TAG"
           docker push "$IMAGE_TAG"
 
