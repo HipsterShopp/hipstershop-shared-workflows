@@ -45,7 +45,7 @@ jobs:
           FILE="${{ inputs.helm_values_path }}"
           SERVICE="${{ inputs.service_name }}"
           TAG="${{ inputs.image_tag }}"
-          ECR_REPO="854929211842.dkr.ecr.us-east-1.amazonaws.com/hipstershop-$SERVICE"
+          Docker_Registry="yampss/hipstershop-$SERVICE"
 
           if [ ! -f "$FILE" ]; then
             echo "ERROR: $FILE not found in hipstershop-helm-charts repo"
@@ -56,7 +56,7 @@ jobs:
           grep -E "$SERVICE|tag:" "$FILE" || true
 
            # Replace full image string
-           sed -i "s|^\(\s*$SERVICE:\s*\)\".*\"|\1\"$ECR_REPO:$TAG\"|" "$FILE"
+           sed -i "s|^\(\s*$SERVICE:\s*\)\".*\"|\1\"$Docker_Registry:$TAG\"|" "$FILE"
 
           echo "After:"
           grep -E "$SERVICE|tag:" "$FILE" || true
