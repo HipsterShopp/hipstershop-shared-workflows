@@ -1,5 +1,4 @@
 name: Code-Quality
-# if: github.actor != 'github-actions[bot]'
 run-name: "${{ inputs.service_name }} triggered by commit — ${{ github.event.head_commit.message }} (${{ github.sha }})"
 
 on:
@@ -70,7 +69,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      # If Quality gate is fails, the job fails !!!
       - name: Sonar Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         with:

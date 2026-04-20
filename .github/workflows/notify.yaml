@@ -36,7 +36,7 @@ jobs:
   notify:
     name: notify
     runs-on: ubuntu-latest
-    # Only run if at least one job actually failed
+
     if: |
       inputs.sonarqube_result    == 'failure' ||
       inputs.snyk_result         == 'failure' ||
@@ -81,7 +81,6 @@ jobs:
           from-email: chrissattasseril16@gmail.com
           to-email: chrissattasseril16@gmail.com
           markdown-body: |
-            ## CI Pipeline Failed — ${{ inputs.service_name }}
 
             | Detail | Value |
             |--------|-------|
@@ -92,10 +91,8 @@ jobs:
             | **Commit** | ${{ github.event.head_commit.message }} |
             | **SHA** | `${{ github.sha }}` |
 
-            ## Failed Jobs
             ${{ steps.summary.outputs.failed_jobs }}
 
-            ## All Job Results
 
             | Job | Result |
             |-----|--------|
