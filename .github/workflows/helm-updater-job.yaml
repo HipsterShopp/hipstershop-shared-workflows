@@ -52,7 +52,6 @@ jobs:
           echo "Before:"
           grep "tag:" "$FILE" || true
 
-          # Target the specific indented `tag:` line under images.<service>
           sed -i "s|^\(\s*tag:\s*\).*|\1${{ inputs.image_tag }}|" "$FILE"
 
           echo "After:"
